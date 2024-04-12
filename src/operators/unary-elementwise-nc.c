@@ -1326,6 +1326,19 @@ enum xnn_status xnn_create_tanh_nc_f32(
     xnn_operator_type_tanh_nc_f32, tanh_op_out);
 }
 
+enum xnn_status xnn_run_tile_tanh_nc_f32(size_t batch, void* input, void* output) {
+  const struct xnn_unary_elementwise_config* f32_tanh_config = xnn_init_f32_tanh_config();
+
+  union xnn_f32_tanh_params params;
+  if XNN_LIKELY(f32_tanh_config != NULL && f32_tanh_config->init.f32_tanh != NULL) {
+    f32_tanh_config->init.f32_tanh(&params);
+  }
+
+  f32_tanh_config->ukernel(batch, input, output, &params);
+
+  return xnn_status_success;
+}
+
 enum xnn_status xnn_create_truncation_nc_f16(
     uint32_t flags,
     xnn_operator_t* truncation_op_out)

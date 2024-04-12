@@ -5822,6 +5822,11 @@ enum xnn_status xnn_create_tanh_nc_f32(
   uint32_t flags,
   xnn_operator_t* tanh_op_out);
 
+enum xnn_status xnn_run_tile_tanh_nc_f32(
+  size_t batch,
+  void* input,
+  void* output);
+
 enum xnn_status xnn_reshape_tanh_nc_f32(
   xnn_operator_t tanh_op,
   size_t batch_size,
