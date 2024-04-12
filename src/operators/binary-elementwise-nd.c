@@ -532,6 +532,31 @@ enum xnn_status xnn_create_multiply_nd_f32(
     multiply_op_out);
 }
 
+enum xnn_status xnn_run_tile_multiply_nd_f32(
+    size_t batch,
+    const float* input_a,
+    const float* input_b,
+    float* output)
+{
+  const struct xnn_binary_elementwise_config* config = xnn_init_f32_vmul_config();
+  const struct xnn_binary_elementwise_subconfig* binary_elementwise_subconfig = &config->minmax;
+
+  const float output_min = -INFINITY;
+  const float output_max = INFINITY;
+  const bool linear_activation = (output_max == INFINITY) && (output_min == -output_max);
+
+  if (linear_activation && config->linear.op_ukernel != NULL) {
+    binary_elementwise_subconfig = &config->linear;
+  }
+
+  union xnn_f32_minmax_params params;
+  assert(config->init.f32_minmax != NULL);
+  config->init.f32_minmax(&params, output_min, output_max);
+
+  config->minmax.op_ukernel(batch, input_a, input_b, output, &params);
+  return xnn_status_success;
+}
+
 enum xnn_status xnn_create_multiply_nd_qs8(
     int8_t input1_zero_point,
     float input1_scale,

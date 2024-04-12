@@ -4864,6 +4864,12 @@ enum xnn_status xnn_run_multiply_nd_f32(
   uint32_t flags,
   pthreadpool_t threadpool);
 
+enum xnn_status xnn_run_tile_multiply_nd_f32(
+  size_t batch,
+  const float* input_a,
+  const float* input_b,
+  float* output);
+
 enum xnn_status xnn_create_multiply_nd_qs8(
   int8_t input1_zero_point,
   float input1_scale,
