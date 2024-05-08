@@ -5473,6 +5473,11 @@ enum xnn_status xnn_setup_softmax_nc_f32(
   const float* input,
   float* output);
 
+enum xnn_status xnn_run_tile_softmax_nc_f32(
+  size_t n,
+  const float* input,
+  float* output);
+
 enum xnn_status xnn_create_softmax_nc_qu8(
   float input_scale,
   uint8_t output_zero_point,

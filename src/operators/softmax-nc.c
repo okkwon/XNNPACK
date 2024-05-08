@@ -22,7 +22,6 @@
 #include <xnnpack/log.h>
 #include <xnnpack/microparams-init.h>
 
-
 enum xnn_status xnn_create_softmax_nc_qu8(
     float input_scale,
     uint8_t output_zero_point,
@@ -501,6 +500,68 @@ enum xnn_status xnn_setup_softmax_nc_f32(
   return setup_softmax_nc_floating_point(
     softmax_op, xnn_operator_type_softmax_nc_f32,
     input, output);
+}
+
+enum xnn_status xnn_run_tile_softmax_nc_f32(
+    size_t n,
+    const float* input,
+    float* output)
+{
+  // Set up the configurations.
+  const struct xnn_rmax_config* rmax_config = xnn_init_f32_rmax_config();
+  if (rmax_config == NULL) {
+    xnn_log_error(
+      "failed to create %s operator: unsupported hardware configuration",
+      xnn_operator_type_to_string(xnn_operator_type_softmax_nc_f32));
+    return xnn_status_unsupported_hardware;
+  }
+
+  const struct xnn_raddstoreexpminusmax_config* raddstoreexpminusmax_config =
+    xnn_init_f32_raddstoreexpminusmax_config();
+  if (raddstoreexpminusmax_config == NULL) {
+    xnn_log_error(
+      "failed to create %s operator: unsupported hardware configuration",
+      xnn_operator_type_to_string(xnn_operator_type_softmax_nc_f32));
+    return xnn_status_unsupported_hardware;
+  }
+
+  const struct xnn_binary_elementwise_config* vmul_config = xnn_init_f32_vmul_config();
+  if (vmul_config == NULL) {
+    xnn_log_error(
+      "failed to create %s operator: unsupported hardware configuration",
+      xnn_operator_type_to_string(xnn_operator_type_multiply_nd_f32));
+    return xnn_status_unsupported_hardware;
+  }
+
+  // Initialize params.
+  union xnn_f32_default_params rmax_params;
+  if (rmax_config->init.f32 != NULL) {
+    rmax_config->init.f32(&rmax_params);
+  }
+
+  union xnn_f32_expminus_params expminus_params;
+  if (raddstoreexpminusmax_config->init.f32 != NULL) {
+    raddstoreexpminusmax_config->init.f32(&expminus_params);
+  }
+  union xnn_f32_minmax_params minmax_params;
+  if (vmul_config->init.f32_minmax != NULL) {
+    vmul_config->init.f32_minmax(&minmax_params, -INFINITY, INFINITY);
+  }
+
+  // reduce-max
+  float x_max;
+  rmax_config->ukernel(n, input, &x_max, &rmax_params);
+
+  // Compute exp(x-x_max) and sum(exp(x-x_max))
+  float output_sum;
+  raddstoreexpminusmax_config->ukernel(n, input, &x_max, output, &output_sum, &expminus_params);
+
+  // Scale the output
+  float scale;
+  compute_reciprocal_f32(&output_sum, &scale);
+  vmul_config->minmax.opc_ukernel(n, output, &scale, output, &minmax_params);
+
+  return xnn_status_success;
 }
 
 enum xnn_status xnn_reshape_softmax_nc_f16(
